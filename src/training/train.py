@@ -55,8 +55,8 @@ N_CLASSES = len(CLASSES)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train fruit quality classifiers")
-    parser.add_argument("--data_dir", type=str, default="data",
-                        help="Root data directory")
+    parser.add_argument("--data_dir", type=str, default="dataset_processed",
+                        help="Root data directory containing train, val, and test folders")
     parser.add_argument("--epochs", type=int, default=30,
                         help="CNN training epochs")
     parser.add_argument("--batch_size", type=int, default=32)
@@ -92,7 +92,7 @@ def load_dataset(data_dir):
                     labels.append(CLASS_SHORT[class_name])
                     filenames.append(path)
 
-    X = np.array(images, dtype=object)
+    X = images
     y = np.array(labels)
     print(f"\nLoaded {len(X)} images across {len(np.unique(y))} classes")
     for cls in CLASSES:
@@ -104,7 +104,8 @@ def extract_features(X_rgb):
     print("\nExtracting features for ML models...")
     features = []
     for i, img in enumerate(X_rgb):
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        img_np = np.asarray(img, dtype=np.uint8)
+        gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
         gray = cv2.resize(gray, (128, 128))
 
         # HOG features
@@ -132,21 +133,20 @@ def extract_features(X_rgb):
     return np.array(features, dtype=np.float32)
 
 
-def train_ml_models(X_feat, y, output_dir):
+def train_ml_models(X_train_feat, y_train_raw, X_test_feat, y_test_raw, output_dir):
     print("\n" + "="*60)
     print("TRAINING TRADITIONAL ML MODELS")
     print("="*60)
 
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_feat)
+    X_train = scaler.fit_transform(X_train_feat)
+    X_test = scaler.transform(X_test_feat)
     joblib.dump(scaler, os.path.join(output_dir, "checkpoints", "scaler.pkl"))
 
     le = LabelEncoder()
-    y_enc = le.fit_transform(y)
+    y_train = le.fit_transform(y_train_raw)
+    y_test = le.transform(y_test_raw)
     joblib.dump(le, os.path.join(output_dir, "checkpoints", "label_encoder.pkl"))
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y_enc, test_size=0.2, random_state=RANDOM_SEED, stratify=y_enc)
 
     results = {}
 
@@ -227,23 +227,17 @@ def build_cnn(input_shape=(224, 224, 3)):
     return model
 
 
-def train_cnn(X_rgb, y, output_dir, args):
+def train_cnn(X_train, y_train_raw, X_val, y_val_raw, X_test, y_test_raw, output_dir, args):
     print("\n" + "="*60)
     print("TRAINING CNN")
     print("="*60)
 
     le = LabelEncoder()
-    y_enc = le.fit_transform(y)
+    y_train = le.fit_transform(y_train_raw)
+    y_val = le.transform(y_val_raw)
+    y_test = le.transform(y_test_raw)
     joblib.dump(le, os.path.join(output_dir, "checkpoints",
                                  "label_encoder_cnn.pkl"))
-
-    X_train, X_tmp, y_train, y_tmp = train_test_split(
-        X_rgb, y_enc, test_size=args.test_size + args.val_size,
-        random_state=RANDOM_SEED, stratify=y_enc)
-    val_ratio = args.val_size / (args.test_size + args.val_size)
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_tmp, y_tmp, test_size=args.test_size / (args.test_size + args.val_size),
-        random_state=RANDOM_SEED, stratify=y_tmp)
 
     def preprocess_batch(images):
         batch = np.array([cv2.resize(img, (224, 224)) for img in images],
@@ -370,31 +364,41 @@ def main():
     os.makedirs(os.path.join(args.output_dir, "results"), exist_ok=True)
     os.makedirs(os.path.join(args.output_dir, "logs"), exist_ok=True)
 
-    # 1. Load dataset
-    print("\n[1/5] Loading dataset...")
-    X_rgb, y, filenames = load_dataset(args.data_dir)
-    if len(X_rgb) == 0:
+    # 1. Load datasets (train, val, and test)
+    print("\n[1/5] Loading datasets...")
+    train_dir = os.path.join(args.data_dir, "train")
+    val_dir = os.path.join(args.data_dir, "val")
+    test_dir = os.path.join(args.data_dir, "test")
+
+    print(f"Loading training data from: {train_dir}")
+    X_train_rgb, y_train_raw, _ = load_dataset(train_dir)
+    print(f"Loading validation data from: {val_dir}")
+    X_val_rgb, y_val_raw, _ = load_dataset(val_dir)
+    print(f"Loading test data from: {test_dir}")
+    X_test_rgb, y_test_raw, _ = load_dataset(test_dir)
+
+    if len(X_train_rgb) == 0 or len(X_val_rgb) == 0 or len(X_test_rgb) == 0:
         print("\nERROR: No images found. Place your data in the following structure:")
-        print("  data/")
-        for folder in CLASS_MAPPING:
-            print(f"    {folder}/")
-            print(f"      Apple_*/")
-            print(f"      Banana_*/")
-            print(f"      ...")
+        print("  dataset_processed/")
+        print("    train/")
+        print("    val/")
+        print("    test/")
         return
 
     # 2. Feature extraction for ML models
-    print("\n[2/5] Extracting features...")
-    X_feat = extract_features(X_rgb)
+    print("\n[2/5] Extracting features for ML models...")
+    X_train_feat = extract_features(X_train_rgb)
+    X_test_feat = extract_features(X_test_rgb)
 
     # 3. Train ML models
     print("\n[3/5] Training ML models (Random Forest + SVM)...")
     results_ml, y_test_ml, y_pred_rf, y_pred_svm = train_ml_models(
-        X_feat, y, args.output_dir)
+        X_train_feat, y_train_raw, X_test_feat, y_test_raw, args.output_dir)
 
     # 4. Train CNN
     print("\n[4/5] Training CNN...")
-    results_cnn, y_test_cnn, y_pred_cnn = train_cnn(X_rgb, y, args.output_dir, args)
+    results_cnn, y_test_cnn, y_pred_cnn = train_cnn(
+        X_train_rgb, y_train_raw, X_val_rgb, y_val_raw, X_test_rgb, y_test_raw, args.output_dir, args)
 
     # 5. Collect results & save
     print("\n[5/5] Saving results...")

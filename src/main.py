@@ -30,10 +30,8 @@ st.set_page_config(
 
 # Initialize model
 @st.cache_resource
-def get_model():
-    return FruitQualityModel()
-
-model = get_model()
+def get_model(model_type):
+    return FruitQualityModel(model_type=model_type)
 
 # Initialize session history
 if "history" not in st.session_state:
@@ -202,6 +200,19 @@ st.markdown("""
 with st.sidebar:
     st.markdown("### Model Configuration")
     
+    selected_model_type = st.selectbox(
+        "Classifier Model",
+        ["SVM", "XGBoost", "CNN"]
+    )
+    
+    # Initialize the selected model
+    model = get_model(selected_model_type.lower())
+    
+    if model.is_simulated:
+        st.warning(f"⚠️ running in SIMULATION mode.")
+    else:
+        st.success(f"⚡ Loaded real {selected_model_type} model.")
+        
     selected_fruit = st.selectbox(
         "Product Type",
         ["Tomato", "Apple", "Lemon"]
