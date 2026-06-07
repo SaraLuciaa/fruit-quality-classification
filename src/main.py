@@ -43,50 +43,6 @@ if "history" not in st.session_state:
         {"timestamp": "10:22:15", "fruit": "Tomato", "quality": "Good Quality (Class B)", "diameter": 6.9, "confidence": 0.82},
     ]
 
-# Synthetic fruit generator for testing
-def generate_synthetic_fruit(fruit_type, condition):
-    # Create white canvas
-    img = np.ones((400, 400, 3), dtype=np.uint8) * 240
-    
-    if fruit_type == "Tomato":
-        center = (200, 200)
-        radius = 110
-        color = (30, 40, 220) if condition != "Defective" else (40, 90, 160)
-        cv2.circle(img, center, radius, color, -1)
-        
-        # Stem
-        pts = np.array([[200, 90], [180, 60], [200, 80], [220, 60]], np.int32)
-        cv2.polylines(img, [pts], False, (40, 180, 40), 4)
-        cv2.circle(img, (200, 90), 8, (30, 150, 30), -1)
-        
-        if condition == "Defective":
-            # Add spots
-            cv2.circle(img, (240, 230), 18, (30, 60, 90), -1)
-            cv2.circle(img, (160, 180), 12, (20, 50, 80), -1)
-            
-    elif fruit_type == "Apple":
-        cv2.circle(img, (170, 200), 105, (50, 205, 50) if condition == "Excellent" else (60, 140, 210), -1)
-        cv2.circle(img, (230, 200), 105, (50, 205, 50) if condition == "Excellent" else (60, 140, 210), -1)
-        cv2.ellipse(img, (200, 90), (40, 25), 0, 0, 360, (240, 240, 240), -1)
-        cv2.line(img, (200, 100), (210, 50), (20, 70, 100), 5)
-        
-        if condition == "Defective":
-            cv2.circle(img, (200, 250), 22, (20, 50, 80), -1)
-            
-    else:  # Lemon
-        cv2.ellipse(img, (200, 200), (120, 80), 30, 0, 360, (50, 210, 220), -1)
-        cv2.circle(img, (95, 140), 12, (50, 210, 220), -1)
-        cv2.circle(img, (305, 260), 12, (50, 210, 220), -1)
-        
-        if condition == "Defective":
-            cv2.ellipse(img, (230, 180), (25, 15), 45, 0, 360, (100, 150, 100), -1)
-            cv2.ellipse(img, (230, 180), (15, 8), 45, 0, 360, (200, 220, 200), -1)
-            
-    # Noise for realism
-    noise = np.random.normal(0, 3, img.shape).astype(np.int16)
-    img = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
-    
-    return img
 
 # ==========================================
 # CUSTOM CSS (AESTHETICS PREMIUM - NO EMOJIS)
@@ -206,12 +162,12 @@ with st.sidebar:
     )
     
     # Initialize the selected model
-    model = get_model(selected_model_type.lower())
-    
-    if model.is_simulated:
-        st.warning(f"⚠️ running in SIMULATION mode.")
-    else:
+    try:
+        model = get_model(selected_model_type.lower())
         st.success(f"⚡ Loaded real {selected_model_type} model.")
+    except Exception as e:
+        st.error(f"❌ Error loading model: {e}")
+        st.stop()
         
     selected_fruit = st.selectbox(
         "Product Type",
@@ -267,42 +223,38 @@ with tab1:
     
     with col_left:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.subheader("Upload Image for Analysis")
+        st.subheader("Select Image Source")
         
-        uploaded_file = st.file_uploader(
-            "Drag and drop your image here...",
-            type=["png", "jpg", "jpeg"]
+        input_method = st.radio(
+            "Input Method",
+            ["Upload Image", "Webcam Capture (Real-Time)"],
+            horizontal=True
         )
         
-        st.markdown("<p style='text-align: center; color: gray;'>Or test directly using synthetic samples:</p>", unsafe_allow_html=True)
+        uploaded_file = None
+        camera_file = None
         
-        c1, c2, c3 = st.columns(3)
-        sample_excellent = c1.button("Excellent Sample", use_container_width=True)
-        sample_good = c2.button("Good Sample", use_container_width=True)
-        sample_defective = c3.button("Defective Sample", use_container_width=True)
-        
+        if input_method == "Upload Image":
+            uploaded_file = st.file_uploader(
+                "Drag and drop your image here...",
+                type=["png", "jpg", "jpeg"]
+            )
+        elif input_method == "Webcam Capture (Real-Time)":
+            camera_file = st.camera_input("Capture an image of the fruit")
+            
         st.markdown("</div>", unsafe_allow_html=True)
         
         raw_img = None
         source_name = ""
-        condition = "Excellent"
         
-        if uploaded_file is not None:
+        if input_method == "Upload Image" and uploaded_file is not None:
             file_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
             raw_img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
             source_name = uploaded_file.name
-        elif sample_excellent:
-            condition = "Excellent"
-            raw_img = generate_synthetic_fruit(selected_fruit, condition)
-            source_name = f"Sample_{selected_fruit}_Excellent.png"
-        elif sample_good:
-            condition = "Good"
-            raw_img = generate_synthetic_fruit(selected_fruit, condition)
-            source_name = f"Sample_{selected_fruit}_Good.png"
-        elif sample_defective:
-            condition = "Defective"
-            raw_img = generate_synthetic_fruit(selected_fruit, condition)
-            source_name = f"Sample_{selected_fruit}_Defective.png"
+        elif input_method == "Webcam Capture (Real-Time)" and camera_file is not None:
+            file_bytes = np.frombuffer(camera_file.read(), np.uint8)
+            raw_img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            source_name = "Camera_Capture.png"
             
         if raw_img is not None:
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
@@ -312,16 +264,7 @@ with tab1:
                 time.sleep(0.6)
                 
                 size_results = model.estimate_size(raw_img, pixels_to_cm_ratio=calibration_ratio)
-                
-                if source_name.startswith("Sample"):
-                    if condition == "Excellent":
-                        quality_results = {"class_name": "Excellent Quality (Class A)", "confidence": 0.96}
-                    elif condition == "Good":
-                        quality_results = {"class_name": "Good Quality (Class B)", "confidence": 0.84}
-                    else:
-                        quality_results = {"class_name": "Defective Quality (Class C)", "confidence": 0.91}
-                else:
-                    quality_results = model.predict_quality(raw_img)
+                quality_results = model.predict_quality(raw_img)
                 
                 annotated_img = draw_annotations(raw_img, size_results, quality_results)
                 annotated_img_rgb = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
@@ -340,12 +283,14 @@ with tab1:
             
             st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.info("Please upload an image from your computer or click on any synthetic sample button to start the analysis.")
+            st.info("Please select an input source (Upload, Camera, or Synthetic Samples) to start the analysis.")
             
     with col_right:
         if raw_img is not None:
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.subheader("Analysis Report")
+            
+            st.markdown(f"**Classifier Model:** `{selected_model_type}` (REAL/TRAINED)")
             
             q_class = quality_results["class_name"]
             conf = quality_results["confidence"]
@@ -367,6 +312,18 @@ with tab1:
                 st.warning(f"Warning: Confidence is below the set threshold ({conf_threshold:.0%}). Manual inspection is suggested.")
             
             st.markdown("---")
+            
+            # Display Prediction Probabilities
+            if "probabilities" in quality_results and quality_results["probabilities"]:
+                st.markdown("#### Prediction Probability Metrics")
+                for c_name, prob in quality_results["probabilities"].items():
+                    col_p1, col_p2 = st.columns([4, 6])
+                    with col_p1:
+                        st.markdown(f"**{c_name.split(' (')[0]}:**")
+                    with col_p2:
+                        st.progress(prob)
+                        st.caption(f"{prob:.2%}")
+                st.markdown("---")
             
             mc1, mc2 = st.columns(2)
             diam_cm = size_results.get("diameter_cm", 0.0)

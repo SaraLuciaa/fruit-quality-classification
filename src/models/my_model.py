@@ -17,7 +17,7 @@ class FruitQualityModel:
     
     def __init__(self, model_type: str = 'svm', checkpoints_dir: str = 'experiments/checkpoints'):
         """
-        Initializes the model by loading weights from file or setting up a fallback simulation.
+        Initializes the model by loading weights from file.
         
         Args:
             model_type (str): The model type to load ('svm', 'xgboost', 'cnn').
@@ -30,55 +30,42 @@ class FruitQualityModel:
         self.model = None
         self.scaler = None
         self.label_encoder = None
-        self.is_simulated = True
         
-        # Load the corresponding model if checkpoint files exist
+        # Load the corresponding model
         if self.model_type == 'svm':
             model_path = os.path.join(checkpoints_dir, 'svm.pkl')
             scaler_path = os.path.join(checkpoints_dir, 'scaler.pkl')
             le_path = os.path.join(checkpoints_dir, 'label_encoder.pkl')
-            if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(le_path):
-                try:
-                    self.model = joblib.load(model_path)
-                    self.scaler = joblib.load(scaler_path)
-                    self.label_encoder = joblib.load(le_path)
-                    self.is_simulated = False
-                    print("Successfully loaded SVM quality model, scaler, and label encoder.")
-                except Exception as e:
-                    print(f"Error loading SVM model: {e}. Falling back to simulation.")
+            if not (os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(le_path)):
+                raise FileNotFoundError(f"SVM model checkpoints not found in '{checkpoints_dir}'. Please run the training pipeline first.")
+            self.model = joblib.load(model_path)
+            self.scaler = joblib.load(scaler_path)
+            self.label_encoder = joblib.load(le_path)
+            print("Successfully loaded SVM quality model, scaler, and label encoder.")
                     
         elif self.model_type == 'xgboost':
             model_path = os.path.join(checkpoints_dir, 'xgboost.pkl')
             scaler_path = os.path.join(checkpoints_dir, 'scaler_xgb.pkl')
             le_path = os.path.join(checkpoints_dir, 'label_encoder_xgb.pkl')
-            if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(le_path):
-                try:
-                    self.model = joblib.load(model_path)
-                    self.scaler = joblib.load(scaler_path)
-                    self.label_encoder = joblib.load(le_path)
-                    self.is_simulated = False
-                    print("Successfully loaded XGBoost quality model, scaler, and label encoder.")
-                except Exception as e:
-                    print(f"Error loading XGBoost model: {e}. Falling back to simulation.")
+            if not (os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(le_path)):
+                raise FileNotFoundError(f"XGBoost model checkpoints not found in '{checkpoints_dir}'. Please run the training pipeline first.")
+            self.model = joblib.load(model_path)
+            self.scaler = joblib.load(scaler_path)
+            self.label_encoder = joblib.load(le_path)
+            print("Successfully loaded XGBoost quality model, scaler, and label encoder.")
                     
         elif self.model_type == 'cnn':
             model_path = os.path.join(checkpoints_dir, 'cnn_best.keras')
             if not os.path.exists(model_path):
                 model_path = os.path.join(checkpoints_dir, 'cnn_final.keras')
             le_path = os.path.join(checkpoints_dir, 'label_encoder_cnn.pkl')
-            if os.path.exists(model_path) and os.path.exists(le_path):
-                try:
-                    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-                    import tensorflow as tf
-                    self.model = tf.keras.models.load_model(model_path)
-                    self.label_encoder = joblib.load(le_path)
-                    self.is_simulated = False
-                    print("Successfully loaded CNN quality model and label encoder.")
-                except Exception as e:
-                    print(f"Error loading CNN model: {e}. Falling back to simulation.")
-
-        if self.is_simulated:
-            print(f"Warning: No valid model checkpoint found for {self.model_type.upper()}. Running in simulation mode.")
+            if not (os.path.exists(model_path) and os.path.exists(le_path)):
+                raise FileNotFoundError(f"CNN model checkpoints not found in '{checkpoints_dir}'. Please run the training pipeline first.")
+            os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+            import tensorflow as tf
+            self.model = tf.keras.models.load_model(model_path)
+            self.label_encoder = joblib.load(le_path)
+            print("Successfully loaded CNN quality model and label encoder.")
 
     def _extract_single_image_features(self, image_bgr: np.ndarray) -> np.ndarray:
         """
@@ -110,7 +97,7 @@ class FruitQualityModel:
 
     def predict_quality(self, image: np.ndarray) -> dict:
         """
-        Predicts quality of a fruit image.
+        Predicts quality of a fruit image using the loaded real model.
         
         Args:
             image (np.ndarray): Image in BGR format (OpenCV).
@@ -124,82 +111,59 @@ class FruitQualityModel:
             "Defective": "Defective Quality (Class C)"
         }
 
-        if self.is_simulated or self.model is None:
-            # Fallback indicating that the model runs in simulation mode
-            mean_intensity = np.mean(image)
-            if mean_intensity > 150:
-                probs = [0.85, 0.10, 0.05]  # Mostly Excellent
-            elif mean_intensity > 90:
-                probs = [0.15, 0.70, 0.15]  # Mostly Good
-            else:
-                probs = [0.05, 0.15, 0.80]  # Mostly Defective
-                
-            pred_idx = int(np.argmax(probs))
+        if self.model_type in ['svm', 'xgboost']:
+            # Extract and scale features
+            feat = self._extract_single_image_features(image)
+            feat_scaled = self.scaler.transform([feat])
             
-            return {
-                "class_name": self.classes[pred_idx],
-                "confidence": probs[pred_idx],
-                "probabilities": {self.classes[i]: probs[i] for i in range(len(self.classes))},
-                "simulated": True
-            }
+            # Predict
+            pred_idx = self.model.predict(feat_scaled)[0]
+            probs = self.model.predict_proba(feat_scaled)[0]
             
-        try:
-            if self.model_type in ['svm', 'xgboost']:
-                # Extract and scale features
-                feat = self._extract_single_image_features(image)
-                feat_scaled = self.scaler.transform([feat])
+            # Decode class
+            pred_class_short = self.label_encoder.inverse_transform([pred_idx])[0]
+            pred_class_long = short_to_long.get(pred_class_short, pred_class_short)
+            confidence = float(probs[pred_idx])
+            
+            probabilities = {}
+            for idx, prob in enumerate(probs):
+                cls_short = self.label_encoder.classes_[idx]
+                cls_long = short_to_long.get(cls_short, cls_short)
+                probabilities[cls_long] = float(prob)
                 
-                # Predict
-                pred_idx = self.model.predict(feat_scaled)[0]
-                probs = self.model.predict_proba(feat_scaled)[0]
-                
-                # Decode class
-                pred_class_short = self.label_encoder.inverse_transform([pred_idx])[0]
-                pred_class_long = short_to_long.get(pred_class_short, pred_class_short)
-                confidence = float(probs[pred_idx])
-                
-                probabilities = {}
-                for idx, prob in enumerate(probs):
-                    cls_short = self.label_encoder.classes_[idx]
-                    cls_long = short_to_long.get(cls_short, cls_short)
-                    probabilities[cls_long] = float(prob)
-                    
-            elif self.model_type == 'cnn':
-                # Preprocess for CNN (Resize to 224x224 and scale to [0, 1])
-                img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                img_resized = cv2.resize(img_rgb, (224, 224))
-                img_normalized = img_resized.astype(np.float32) / 255.0
-                img_batch = np.expand_dims(img_normalized, axis=0)
-                
-                # Predict
-                probs = self.model.predict(img_batch, verbose=0)[0]
-                pred_idx = np.argmax(probs)
-                
-                # Decode class
-                pred_class_short = self.label_encoder.inverse_transform([pred_idx])[0]
-                pred_class_long = short_to_long.get(pred_class_short, pred_class_short)
-                confidence = float(probs[pred_idx])
-                
-                probabilities = {}
-                for idx, prob in enumerate(probs):
-                    cls_short = self.label_encoder.classes_[idx]
-                    cls_long = short_to_long.get(cls_short, cls_short)
-                    probabilities[cls_long] = float(prob)
+        elif self.model_type == 'cnn':
+            # Preprocess for CNN (Resize to 224x224 and scale to [0, 1])
+            img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            img_resized = cv2.resize(img_rgb, (224, 224))
+            img_normalized = img_resized.astype(np.float32) / 255.0
+            img_batch = np.expand_dims(img_normalized, axis=0)
+            
+            # Predict
+            probs = self.model.predict(img_batch, verbose=0)[0]
+            pred_idx = np.argmax(probs)
+            
+            # Decode class
+            pred_class_short = self.label_encoder.inverse_transform([pred_idx])[0]
+            pred_class_long = short_to_long.get(pred_class_short, pred_class_short)
+            confidence = float(probs[pred_idx])
+            
+            probabilities = {}
+            for idx, prob in enumerate(probs):
+                cls_short = self.label_encoder.classes_[idx]
+                cls_long = short_to_long.get(cls_short, cls_short)
+                probabilities[cls_long] = float(prob)
 
-            return {
-                "class_name": pred_class_long,
-                "confidence": confidence,
-                "probabilities": probabilities,
-                "simulated": False
-            }
-        except Exception as e:
-            print(f"Error executing real model inference: {e}. Falling back to simulation.")
-            return self.predict_quality(image)
+        return {
+            "class_name": pred_class_long,
+            "confidence": confidence,
+            "probabilities": probabilities,
+            "simulated": False
+        }
 
     def estimate_size(self, image: np.ndarray, pixels_to_cm_ratio: float = 0.026) -> dict:
         """
-        Estimates the physical size of the fruit using contour detection
-        and a pixel-to-centimeter conversion ratio.
+        Estimates the physical size of the fruit using HSV saturation segmentation
+        and an equivalent area-based diameter metric.
         
         Args:
             image (np.ndarray): Image in BGR format.
@@ -209,17 +173,20 @@ class FruitQualityModel:
         Returns:
             dict: Estimated size parameters (diameter in px, diameter in cm, contours).
         """
-        # Convert to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # 1. Segment using Saturation channel of HSV space (removes shadows and background)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
         
-        # Filter noise
-        blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+        # Otsu thresholding on Saturation channel
+        _, thresh = cv2.threshold(s, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
-        # Edge detection or thresholding
-        _, thresh = cv2.threshold(blurred, 50, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        # Morphological operations to clean up mask (close holes, open borders)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        mask = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         
         # Find contours
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
             return {
@@ -234,15 +201,19 @@ class FruitQualityModel:
         main_contour = max(contours, key=cv2.contourArea)
         area_px = cv2.contourArea(main_contour)
         
-        # Get minimum enclosing circle for the contour
-        (x, y), radius = cv2.minEnclosingCircle(main_contour)
-        diameter_px = radius * 2
+        # 2. Calculate equivalent area-based diameter: D = 2 * sqrt(Area / pi)
+        # This is extremely stable against shadow noise or small contour protrusions
+        import math
+        diameter_px = 2 * math.sqrt(area_px / math.pi)
         
         # Convert to real centimeters
         diameter_cm = diameter_px * pixels_to_cm_ratio
         
         # Axis-aligned bounding box
         bx, by, bw, bh = cv2.boundingRect(main_contour)
+        
+        # Get minimum enclosing circle for centroid and visual tracking
+        (x, y), radius = cv2.minEnclosingCircle(main_contour)
         
         return {
             "diameter_px": round(diameter_px, 1),
