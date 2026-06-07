@@ -1,0 +1,172 @@
+Proyecto Final
+Algoritmos y Programaci´on III
+Semestre 2026-1
+Facultad de Ingenier´ıa, Dise˜no y Ciencias Aplicadas
+Departamento de Computaci´on y Sistemas Inteligentes
+Ingenier´ıa de Sistemas
+Lineamientos para el proyecto ﬁnal
+El proyecto ﬁnal del curso Algoritmos y Programaci´on III es una actividad grupal (3
+estudiantes por grupo) que busca desarrollar una soluci´on a un problema real utilizando mo-
+delos de anal´ıtica y conjuntos de datos de diversos formatos. Cada grupo deber´a comprender
+el problema, investigar su contexto y antecedentes, deﬁnir una metodolog´ıa de trabajo y
+proponer m´etricas de desempe˜no adecuadas para evaluar el progreso. Se espera que, a lo
+largo del desarrollo, se entrenen y eval´uen diferentes modelos de anal´ıtica. Para cada modelo,
+se deben ajustar adecuadamente los hiperpar´ametros y evaluar los resultados con base en
+m´etricas predeﬁnidas. Cada grupo deber´a utilizar la metodolog´ıa CRISP-DM, adapt´andola
+a las necesidades particulares de su proyecto.
+1.
+Caso de estudio propuesto: sistema de anotaci´on de
+video
+1.1.
+Contexto
+En mercados y agroindustrias, la clasiﬁcaci´on manual de productos frescos (tomates,
+manzanas, papas, etc.) seg´un su tama˜no, madurez o defectos visibles es un proceso lento,
+subjetivo y propenso a errores. Esta situaci´on genera p´erdidas econ´omicas, desperdicio de
+alimentos y falta de estandarizaci´on.
+Se requiere desarrollar un sistema autom´atico de clasiﬁcaci´on de calidad basado en visi´on
+por computadora, capaz de analizar im´agenes de frutas o verduras, asignar una categor´ıa
+1
+
+de calidad y estimar el tama˜no relativo del producto. El sistema deber´a ser entrenado con
+un conjunto de datos que combine fuentes p´ublicas y recolecci´on propia, y ser´a evaluado
+mediante m´etricas rigurosas.
+1.2.
+Entrada
+Im´agenes est´aticas (fotograf´ıas tomadas con c´amara web o celular) de una fruta o verdura
+individual, sobre un fondo simple y uniforme.
+1.3.
+Salidas
+Clase de calidad (3 o m´as categor´ıas deﬁnidas por grupo).
+Estimaci´on de tama˜no (peque˜no, mediano, grande) o di´ametro en p´ıxeles normalizados.
+1.4.
+Formato de despliegue
+Interfaz gr´aﬁca simple (por ejemplo, con Tkinter, PyQt o una aplicaci´on web con Stream-
+lit) que permita cargar una imagen o capturarla en tiempo real usando la c´amara, y que
+muestre la predicci´on obtenida.
+1.5.
+Opcional (extensi´on)
+Simulaci´on de una l´ınea de empaque en tiempo real con c´amara y Raspberry Pi.
+2.
+Datos
+2.1.
+Base de datos de referencia
+Se utilizar´a el conjunto de datos Fruit Quality Classiﬁcation, disponible en: https://
+www.kaggle.com/datasets/ryandpark/fruit-quality-classification
+Para la evaluaci´on o el enriquecimiento de la base de datos, se puede emplear la carpe-
+ta mixed quality, que contiene im´agenes de diferentes frutas con distintas calidades. Los
+estudiantes deber´an segmentar individualmente cada fruta presente en las im´agenes (si hay
+varias por foto) para obtener ejemplares individuales.
+2.2.
+Coordinaci´on grupal y entre toda la clase
+Cada grupo deber´a recolectar al menos 30 a 50 im´agenes adicionales de frutas o ver-
+duras reales, obtenidas en plazas de mercado, supermercados o en sus propios hogares. Las
+im´agenes deben abarcar diferentes estados de madurez, tama˜nos y defectos (golpes, manchas,
+podredumbre).
+2
+
+2.3.
+Anotaci´on manual
+Cada grupo debe etiquetar sus propias im´agenes con la categor´ıa de calidad y el tama˜no
+correspondiente. Las etiquetas deben ser coherentes con las deﬁniciones establecidas para el
+proyecto.
+Entre todos los estudiantes se deﬁnir´a un mecanismo para compartir anotaciones entre
+todos los grupos (por ejemplo, una carpeta compartida en la nube o un repositorio com´un),
+de modo que al ﬁnal se disponga de un conjunto de datos m´as grande y diverso.
+3.
+Materiales y m´etodos a utilizar
+Los estudiantes deber´an elegir al menos dos modelos distintos de machine learning
+y uno de deep learning, entre los siguientes:
+Modelos de machine learning tradicionales: Regresi´on log´ıstica, K-vecinos m´as
+cercanos (KNN), m´aquinas de soporte vectorial (SVM), Bagging, ´arboles de decisi´on,
+Random Forest, XGBoost. Se deben ajustar hiperpar´ametros mediante validaci´on cru-
+zada o b´usqueda en rejilla.
+Redes neuronales convolucionales (CNN) simples: Arquitecturas peque˜nas (por
+ejemplo, 2 o 3 capas convolucionales + pooling + capas densas). Se permite el uso de
+transfer learning siempre que se congelen capas y se a˜nadan capas propias, aunque se
+recomienda priorizar modelos entrenados desde cero para un mejor aprendizaje.
+Redes neuronales totalmente conectadas (MLP) si se trabaja con caracter´ısticas
+extra´ıdas manualmente.
+4.
+Metodolog´ıa de trabajo: CRISP-DM
+Cada grupo debe documentar expl´ıcitamente cada fase de CRISP-DM adaptada a
+su proyecto. No basta con copiar el diagrama; se debe mostrar evidencia de trabajo en cada
+fase:
+1. Comprensi´on del negocio: ¿Por qu´e es importante clasiﬁcar la calidad? ¿Qu´e im-
+pacto econ´omico o social tiene?
+2. Comprensi´on de los datos: An´alisis exploratorio (distribuci´on de clases, desbalanceo,
+calidad de im´agenes, variabilidad).
+3. Preparaci´on de los datos: Procesamiento, manejo de clases desbalanceadas (si apli-
+ca).
+4. Modelado: Entrenamiento, ajuste de hiperpar´ametros, selecci´on del modelo.
+5. Evaluaci´on: M´etricas en conjunto de prueba, an´alisis de errores, comparaci´on con l´ınea
+base.
+3
+
+6. Despliegue: Desarrollo de una interfaz gr´aﬁca sencilla que permita al usuario ver en
+tiempo real la calidad de una fruta presentada ante la c´amara.
+Se debe entregar un diagrama de ﬂujo personalizado que reﬂeje la aplicaci´on concreta
+de CRISP-DM.
+5.
+Evaluaci´on
+Se evaluar´a la calidad del trabajo mediante las siguientes preguntas:
+¿La metodolog´ıa es clara y robusta?
+¿Las aproximaciones realizadas en el proyecto son razonables?
+¿Los datos se exploraron y procesaron de forma adecuada?
+¿Las soluciones propuestas son ingeniosas e interesantes?
+¿Se explican correctamente los impactos de la soluci´on en el contexto abordado?
+¿Se complementaron los datos iniciales?
+¿Los estudiantes desarrollaron y transmitieron conocimientos no triviales sobre el pro-
+blema, los algoritmos y los modelos?
+¿El trabajo demuestra el desarrollo de las competencias deﬁnidas para este curso?
+Se compartir´a un documento para que un representante de cada grupo informe los in-
+tegrantes y el enlace al repositorio de entrega en GitHub. El repositorio debe tener una
+estructura clara, organizada seg´un las fases deﬁnidas en la metodolog´ıa.
+6.
+Aspectos a tener en cuenta
+Se debe detallar el problema, la metodolog´ıa, las m´etricas para medir el progreso, los
+datos recolectados, el an´alisis exploratorio de los datos y los siguientes pasos o etapas del
+proyecto.
+Tambi´en se debe incluir un an´alisis de los aspectos ´eticos relevantes al implementar solu-
+ciones de IA en el contexto del problema abordado.
+Se debe detallar el entrenamiento de los modelos (incluyendo el ajuste de hiperpar´ame-
+tros), los resultados obtenidos (m´etricas, gr´aﬁcas, etc.) y el plan de despliegue. Adem´as, se
+realizar´a un an´alisis inicial de los impactos de la soluci´on en el contexto del problema.
+Se espera que el nivel de profundidad del an´alisis y la calidad de los resultados sean
+rigurosos. Al ﬁnal, se deber´a presentar el an´alisis ﬁnal de los impactos de la soluci´on en el
+contexto abordado.
+Al concluir el proyecto, se debe incluir un video corto de no m´as de 10 minutos presentando
+el proyecto, el contexto del problema, las t´ecnicas utilizadas, los resultados y los principales
+logros alcanzados.
+4
+
+Es fundamental que el c´odigo fuente est´e bien documentado. Si se utilizan datos o c´odigo
+fuente de terceros, deben referenciarse de forma clara y expl´ıcita; de lo contrario, se conside-
+rar´a fraude.
+Los informes deben contener explicaciones claras y concisas. Se recomienda incluir diagra-
+mas de ﬂujo, diagramas de bloques u otras ﬁguras que ilustren la metodolog´ıa, la arquitectura
+de software y los resultados, tanto en el informe como en la presentaci´on. Se deben utilizar
+gr´aﬁcos de calidad vectorial.
+7.
+Estructura b´asica del informe ﬁnal
+M´aximo 7 p´aginas:
+1. T´ıtulo.
+2. Resumen (Abstract).
+3. Introducci´on: contexto, descripci´on del problema, justiﬁcaci´on de su inter´es.
+4. Fundamentos te´oricos: ¿Qu´e debe saber el lector para comprender el desarrollo? Nota:
+Seleccionar cuidadosamente el contenido de esta secci´on, evitando generalidades.
+5. Metodolog´ıa: ¿C´omo se abord´o el proyecto? Nota: No se busca una copia exacta del
+diagrama CRISP-DM.
+6. Resultados: ¿C´omo se desempe˜naron los modelos en diferentes conjuntos de datos?
+M´etricas de inter´es para el problema espec´ıﬁco.
+7. An´alisis de resultados: ¿Qu´e se observa en los resultados? ¿Los modelos generalizan
+bien? ¿Hay sobreajuste (overﬁtting)? ¿Qu´e funciona bien? ¿Qu´e falla? ¿C´omo se com-
+paran los resultados con otros reportados en la literatura?
+8. Conclusiones y trabajo futuro: ¿Qu´e se hizo? ¿Qu´e se aprendi´o? ¿Qu´e se puede mejorar?
+9. Referencias bibliogr´aﬁcas: Incluir solo art´ıculos, libros o materiales digitales que hayan
+sido le´ıdos y utilizados. Usar formato IEEE.
+Observaciones
+1. Revisar con detenimiento art´ıculos publicados en conferencias de inter´es como NIPS,
+ICML o ICLR, entre otras, antes de redactar los informes ﬁnales.
+2. TODOS los grupos deben prestar mucha atenci´on a la r´ubrica de evaluaci´on, que estar´a
+presente en INTU, para ajustar su informe ﬁnal adecuadamente.
+5
