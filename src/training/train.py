@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=30,
                         help="CNN training epochs")
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--output_dir", type=str, default="experiments")
     parser.add_argument("--test_size", type=float, default=0.2)
     parser.add_argument("--val_size", type=float, default=0.15)
@@ -198,29 +198,47 @@ def train_ml_models(X_train_feat, y_train_raw, X_test_feat, y_test_raw, output_d
 
 def build_cnn(input_shape=(224, 224, 3)):
     model = keras.Sequential([
+        # Bloque 1: 224x224x3 -> 112x112x32
         layers.Input(shape=input_shape),
-        layers.Conv2D(32, (3, 3), activation="relu", padding="same"),
+        layers.Conv2D(32, (3, 3), padding="same", use_bias=False),
         layers.BatchNormalization(),
-        layers.Conv2D(32, (3, 3), activation="relu", padding="same"),
+        layers.Activation("relu"),
+        layers.MaxPooling2D(2, 2),
+        layers.Dropout(0.2),
+
+        # Bloque 2: 112x112x32 -> 56x56x64
+        layers.Conv2D(64, (3, 3), padding="same", use_bias=False),
         layers.BatchNormalization(),
+        layers.Activation("relu"),
+        layers.MaxPooling2D(2, 2),
+        layers.Dropout(0.2),
+
+        # Bloque 3: 56x56x64 -> 28x28x128
+        layers.Conv2D(128, (3, 3), padding="same", use_bias=False),
+        layers.BatchNormalization(),
+        layers.Activation("relu"),
         layers.MaxPooling2D(2, 2),
         layers.Dropout(0.25),
 
-        layers.Conv2D(64, (3, 3), activation="relu", padding="same"),
+        # Bloque 4: 28x28x128 -> 14x14x256
+        layers.Conv2D(256, (3, 3), padding="same", use_bias=False),
         layers.BatchNormalization(),
-        layers.Conv2D(64, (3, 3), activation="relu", padding="same"),
-        layers.BatchNormalization(),
+        layers.Activation("relu"),
         layers.MaxPooling2D(2, 2),
         layers.Dropout(0.25),
 
-        layers.Conv2D(128, (3, 3), activation="relu", padding="same"),
+        # Bloque 5: 14x14x256 -> 7x7x256
+        layers.Conv2D(256, (3, 3), padding="same", use_bias=False),
         layers.BatchNormalization(),
+        layers.Activation("relu"),
         layers.MaxPooling2D(2, 2),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
 
-        layers.GlobalAveragePooling2D(),
-        layers.Dense(256, activation="relu"),
+        # Clasificador
+        layers.Flatten(),
+        layers.Dense(256, use_bias=False),
         layers.BatchNormalization(),
+        layers.Activation("relu"),
         layers.Dropout(0.5),
         layers.Dense(N_CLASSES, activation="softmax"),
     ])
