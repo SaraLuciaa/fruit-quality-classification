@@ -102,11 +102,9 @@ El despliegue de este clasificador automático en una banda transportadora requi
 
 Para superar las brechas identificadas, especialmente el bajo rendimiento de la CNN, se plantean las siguientes acciones técnicas concretas:
 
-### 6.1 Rediseño de la CNN mediante Aprendizaje por Transferencia (Transfer Learning)
-En lugar de entrenar una red desde cero con un conjunto de datos limitado, se propone:
-* **Uso de MobileNetV2:** Seleccionar una arquitectura liviana preentrenada en ImageNet, ideal para hardware embebido.
-* **Congelación de Capas:** Congelar las primeras capas convolucionales (que extraen características visuales genéricas como bordes y texturas).
-* **Entrenamiento de Cabeza de Clasificación:** Agregar capas densas con regularización $L_2$ estricta, Batch Normalization y Dropout al 50% para aprender la distribución de nuestras frutas sin sobreajustarse.
-
-### 6.2 Preprocesamiento Avanzado de Iluminación (CLAHE)
-Las variaciones lumínicas en las plantas de empaque pueden alterar significativamente los histogramas de color y la detección de texturas. Se propone aplicar la técnica **CLAHE** (Contrast Limited Adaptive Histogram Equalization) antes de la extracción de características HOG. Esto normalizará los contrastes locales, eliminando sombras espurias y brillos excesivos en las superficies esféricas de las frutas.
+### 6.1 Ampliación del Entrenamiento y Optimización de Épocas en la CNN
+Se propone mejorar la capacidad de convergencia y aprendizaje del modelo convolucional profundo reestructurando el régimen de entrenamiento:
+* **Incremento en el Número de Épocas:** Aumentar el límite de entrenamiento de 30 a un rango de 80 a 100 épocas. Dado que el modelo actual es profundo (5 bloques convolucionales), requiere un mayor número de iteraciones para que los gradientes ajusten correctamente los pesos de las capas convolucionales intermedias y finales.
+* **Optimización de Early Stopping:** Ajustar la paciencia del callback `EarlyStopping` (incrementándolo de 7 a 15 épocas) para evitar paradas prematuras. Esto permitirá que la red supere mesetas iniciales en la función de pérdida antes de detener el entrenamiento.
+* **Monitoreo de Curvas y Regularización:** Acompañar el entrenamiento extendido con un aumento en la tasa de Dropout y técnicas de regularización de pesos (como penalizaciones $L_2$) para evitar que el incremento en el número de épocas exacerbe el sobreajuste.
+* **Programación Dinámica del Learning Rate:** Ajustar el callback `ReduceLROnPlateau` para reducir el factor de tasa de aprendizaje de forma más paulatina, permitiendo búsquedas de grano más fino en el espacio de parámetros en las épocas avanzadas.
